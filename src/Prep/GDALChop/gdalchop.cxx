@@ -124,11 +124,11 @@ public:
         return dataset->GetDescription();
     }
 
-    int GetColStepArcsec() {
+    double GetColStepArcsec() {
         return pxSizeX * 3600;
     }
 
-    int GetRowStepArcsec() {
+    double GetRowStepArcsec() {
         return pxSizeY * 3600;
     }
 
@@ -141,6 +141,7 @@ public:
 protected:
     /* The dataset */
     GDALDataset *dataset;
+    GDALDataset *dstDataset;
 
     /* Source spatial reference system */
     OGRSpatialReference srs;
@@ -233,18 +234,20 @@ void ImageInfo::GetDataChunk(int *buffer,
                              int w, int h,
                              int srcband, int nodata)
 {
+	SG_LOG(SG_GENERAL, SG_INFO,"1 GETTING DATA CHUNK!!");
     OGRSpatialReference wgs84SRS;
 
     wgs84SRS.SetWellKnownGeogCS( "EPSG:4326" );
 
     char* wgs84WKT;
     wgs84SRS.exportToWkt(&wgs84WKT);
-
+	
+	SG_LOG(SG_GENERAL, SG_INFO,"2 GETTING DATA CHUNK!!");
     /* Setup a raster transformation from WGS84 to raster coordinates of the array files */
     SimpleRasterTransformerInfo xformData;
     xformData.pTransformerArg = GDALCreateGenImgProjTransformer(
         dataset, NULL,
-        NULL, wgs84WKT,
+        NULL,wgs84WKT,
         FALSE,
         0.0,
         1);
@@ -254,7 +257,8 @@ void ImageInfo::GetDataChunk(int *buffer,
     xformData.y0 = y - pxSizeY * 0.5;
     xformData.col_step = colstep;
     xformData.row_step = rowstep;
-
+	
+	SG_LOG(SG_GENERAL, SG_INFO,"3 GETTING DATA CHUNK!!");
     // TODO: check if this image can actually cover part of the chunk
 
     /* establish the full source to target transformation */
@@ -268,9 +272,11 @@ void ImageInfo::GetDataChunk(int *buffer,
     int    srcHasNodataValue;
 
     srcNodataReal = dataset->GetRasterBand(srcband)->GetNoDataValue(&srcHasNodataValue);
-
+	
+	SG_LOG(SG_GENERAL, SG_INFO,"4 GETTING DATA CHUNK!!");
     psWarpOptions->hSrcDS = dataset;
     psWarpOptions->hDstDS = NULL;
+	//psWarpOptions->hDstDS = dstDataset;
     psWarpOptions->nBandCount = 1;
     psWarpOptions->panSrcBands = srcBandNumbers;
     psWarpOptions->panDstBands = dstBandNumbers;
@@ -281,27 +287,31 @@ void ImageInfo::GetDataChunk(int *buffer,
     psWarpOptions->padfDstNoDataReal = NULL;
     psWarpOptions->eResampleAlg = GRA_NearestNeighbour;
     psWarpOptions->eWorkingDataType = GDT_Int32;
-
+	
     psWarpOptions->pfnTransformer = SimpleRasterTransformer;
     psWarpOptions->pTransformerArg = &xformData;
-
+	
+	SG_LOG(SG_GENERAL, SG_INFO,"5 GETTING DATA CHUNK!!  " << " w " << w << " h " << h << " buffer " << buffer[0] );
     GDALWarpOperation oOperation;
     oOperation.Initialize( psWarpOptions );
-
+	
+	SG_LOG(SG_GENERAL, SG_INFO,"5.5 GETTING DATA CHUNK!!  " << " w " << w << " h " << h << " buffer " << buffer[0] );
     /* do the warp */
     if (oOperation.WarpRegionToBuffer(0, 0, w, h, buffer, GDT_Int32) != CE_None) {
         SG_LOG(SG_GENERAL, SG_ALERT,
                "Could not warp to buffer on dataset '" << GetDescription() << "'"
                ":" << CPLGetLastErrorMsg());
     }
-
+	
+	SG_LOG(SG_GENERAL, SG_INFO,"6 GETTING DATA CHUNK!!");
     /* clean up */
     psWarpOptions->panSrcBands = NULL;
     psWarpOptions->panDstBands = NULL;
     psWarpOptions->padfSrcNoDataReal = NULL;
     psWarpOptions->padfSrcNoDataImag = NULL;
     psWarpOptions->padfDstNoDataReal = NULL;
-
+	
+	SG_LOG(SG_GENERAL, SG_INFO,"7 GETTING DATA CHUNK!!");
     GDALDestroyGenImgProjTransformer( xformData.pTransformerArg );
     GDALDestroyWarpOptions( psWarpOptions );
 }
@@ -310,7 +320,7 @@ void write_bucket(const std::string& work_dir, SGBucket bucket,
                   int* buffer,
                   int min_x, int min_y,
                   int span_x, int span_y,
-                  int col_step, int row_step)
+                  double col_step, double row_step)
 {
     // generate output file name
     std::string base = bucket.gen_base_path();
@@ -363,17 +373,20 @@ void process_bucket(const SGPath& work_dir, SGBucket bucket,
 
     min_x = (int)(bwest * 3600.0);
     min_y = (int)(bsouth * 3600.0);
-
+    printf("Image count: %d\n",imagecount);
     // Determine minimum common arcsec steps across images
-    int col_step = -1, row_step = -1;
+    double col_step = -1.0, row_step = -1.0;
     for (int i = 0; i < imagecount; i++) {
         if ( images[i]->GetColStepArcsec() > col_step ) {
-            col_step = images[i]->GetColStepArcsec();
+            //col_step = 0.333;
+			col_step = images[i]->GetColStepArcsec();
         }
         if ( images[i]->GetRowStepArcsec() > row_step ) {
+            //row_step = 0.333;;
             row_step = images[i]->GetRowStepArcsec();
         }
     }
+	SG_LOG(SG_GENERAL, SG_INFO, "2 processing bucket " << bucket << "(" << bucket.gen_index() << ") n=" << bnorth << " s=" << bsouth << " e=" << beast << " w=" << bwest);
 
     span_x = (bucket.get_width() * 3600 / col_step) + 1;
     span_y = (bucket.get_height() * 3600 / row_step) + 1;
@@ -382,9 +395,14 @@ void process_bucket(const SGPath& work_dir, SGBucket bucket,
     boost::scoped_array<int> buffer(new int[cellcount]);
 
     ::memset(buffer.get(), 0, cellcount * sizeof(int));
+	SG_LOG(SG_GENERAL, SG_INFO, "3 processing bucket, span x " << span_x << "  span_y  " << span_y);
 
     for (int i = 0; i < imagecount; i++) {
-        if ( images[i]->GetBoundingBox().intersects(BucketBounds) ) {
+
+		if ( images[i]->GetBoundingBox().intersects(BucketBounds) ) {
+			SG_LOG(SG_GENERAL, SG_INFO, "i =  " << i << " buffer  width " << bucket.get_width() <<  
+				" height " << bucket.get_height() << " col_step " << col_step << " row_step " << row_step << " span_x " << span_x
+				<< " span_y " << span_y << " bwest " << bwest << " bsouth " << bsouth );
             images[i]->GetDataChunk(buffer.get(),
                                     bwest, bsouth,
                                     col_step / 3600.0, row_step / 3600.0,
@@ -412,6 +430,7 @@ void process_bucket(const SGPath& work_dir, SGBucket bucket,
         if (!forceWrite)
             return;
     }
+	SG_LOG(SG_GENERAL, SG_INFO, "4 processing bucket " << bucket << "(" << bucket.gen_index() << ") n=" << bnorth << " s=" << bsouth << " e=" << beast << " w=" << bwest);
 
     /* ...and write it out */
     write_bucket(work_dir.str(), bucket,
@@ -419,6 +438,8 @@ void process_bucket(const SGPath& work_dir, SGBucket bucket,
                  min_x, min_y,
                  span_x, span_y,
                  col_step, row_step);
+	SG_LOG(SG_GENERAL, SG_INFO, "wrote bucket " << bucket << "(" << bucket.gen_index() << ") n=" << bnorth << " s=" << bsouth << " e=" << beast << " w=" << bwest);
+
 }
 
 int main(int argc, const char **argv)

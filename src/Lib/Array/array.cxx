@@ -140,10 +140,12 @@ TGArray::parse( SGBucket& b ) {
         double max_y = ( b.get_center_lat() + 0.5 * b.get_height() ) * 3600.0;
 
         cols = 3;
-        col_step = (max_x - originx) / (cols - 1);
+        col_step = (max_x - originx) / (cols - 1);//TEMP 0.333?
         rows = 3;
-        row_step = (max_y - originy) / (rows - 1);
+        row_step = (max_y - originy) / (rows - 1);//TEMP  0.333?
 
+		printf( "!!!!!!!!!!!!!!!!!!!!  origin  =  %f  %f  !!!!!!!!!!!!!!!!!!!!  \n",originx ,originy );
+		printf( "!!!!!!!!!!!!!!!!!!!!  col_step =   %f  %f  !!!!!!!!!!!!!!!!!!!!  \n" , col_step , row_step );
         SG_LOG(SG_GENERAL, SG_DEBUG, "    origin  = " << originx << "  " << originy );
         SG_LOG(SG_GENERAL, SG_DEBUG, "    cols = " << cols << "  rows = " << rows );
         SG_LOG(SG_GENERAL, SG_DEBUG, "    col_step = " << col_step << "  row_step = " << row_step );
@@ -162,6 +164,7 @@ TGArray::parse( SGBucket& b ) {
         for ( int i = 0; i < fitted_size; ++i ) {
             *fitted_in >> x >> y >> z;
             fitted_list.push_back( SGGeod::fromDegM(x, y, z) );
+			printf("***************** fitted node: %f %f %f\n",x,y,z);
             SG_LOG(SG_GENERAL, SG_DEBUG, " loading fitted = " << SGGeod::fromDegM(x, y, z) );
         }
     }
@@ -176,6 +179,7 @@ void TGArray::parse_bin()
     if (header != 0x54474152) {
         SG_LOG(SG_GENERAL, SG_ALERT, "\nThe .arr file is not in the correct binary format."
         << "\nPlease rebuild it using the latest TerraGear HGT tools.");
+		printf("BAD BIN FILE FORMAT - Please rebuild it using the latest TerraGear HGT tools.\n");
         exit(1);
     }
 
@@ -192,9 +196,14 @@ void TGArray::parse_bin()
 
     col_step = intColStep;
     row_step = intRowStep;
-
+	if (col_step==0.0) col_step = 0.333;
+	if (row_step==0.0) row_step = 0.333;
     in_data = new short[cols * rows];
     sgReadShort(array_in, cols * rows, in_data);
+
+	printf("??????????  origin %f  %f intColStep, intRowStep  %f  %f   cols %d rows %d  ?????????? \n",
+		originx,originy,col_step,row_step,cols,rows);
+
 }
 
 // write an Array file
@@ -324,6 +333,7 @@ double TGArray::closest_nonvoid_elev( double lon, double lat ) const {
     for ( int row = 0; row < rows; row++ ) {
         for ( int col = 0; col < cols; col++ ) {
             SGGeod p1 = SGGeod::fromDeg( originx + col * col_step, originy + row * row_step );
+			//SGGeod p1 = SGGeod::fromDeg( originx + col * 0.333, originy + row * 0.333 );
             double dist = SGGeodesy::distanceM( p0, p1 );
             double elev = get_array_elev(col, row);
             if ( dist < mindist && elev > -9000 ) {
@@ -361,9 +371,11 @@ double TGArray::altitude_from_grid( double lon, double lat ) const {
 
        then calculate our end points
      */
-
+	//printf("col_step: %f, row_step %f\n",col_step,row_step);
     xlocal = (lon - originx) / col_step;
     ylocal = (lat - originy) / row_step;
+	//xlocal = (lon - originx) / 0.333;
+    //ylocal = (lat - originy) / 0.333;
 
     xindex = (int)(xlocal);
     yindex = (int)(ylocal);

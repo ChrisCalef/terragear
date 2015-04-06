@@ -77,6 +77,7 @@ void TGConstruct::CalcElevations( void )
         if ( !node.GetFixedPosition() ) {
             // set elevation as interpolated point from DEM data.
             nodes.SetElevation( i, array.altitude_from_grid(pos.getLongitudeDeg() * 3600.0, pos.getLatitudeDeg() * 3600.0) );
+			if (i%5==0) printf("node elevation (%f,%f): %f\n",pos.getLongitudeDeg(),pos.getLatitudeDeg(),array.altitude_from_grid(pos.getLongitudeDeg() * 3600.0, pos.getLatitudeDeg() * 3600.0) );
         }
     }
 

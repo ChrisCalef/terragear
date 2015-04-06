@@ -188,7 +188,7 @@ void fit_file(const SGPath& path) {
     }
 
     gzprintf(fp,"%d\n",mesh->pointCount());
-
+	int c=0;
     for (int x=0;x<DEM->width;x++) {
         for (int y=0;y<DEM->height;y++) {
             if (mesh->is_used(x,y) != DATA_POINT_USED)
@@ -196,7 +196,10 @@ void fit_file(const SGPath& path) {
             double vx,vy,vz;
             vx=(inarray.get_originx()+x*inarray.get_col_step())/3600.0;
             vy=(inarray.get_originy()+y*inarray.get_row_step())/3600.0;
-            vz=DEM->eval(x,y);
+			//vx=(inarray.get_originx()+x*0.333)/3600.0;
+			//vy=(inarray.get_originy()+y*0.333)/3600.0;
+            vz=DEM->eval(x,y);			
+			if (c++ % 100 == 0) printf("z=%f - %+03.8f %+02.8f %0.2f\n",vz,vx,vy,vz);
             gzprintf(fp,"%+03.8f %+02.8f %0.2f\n",vx,vy,vz);
         }
     }

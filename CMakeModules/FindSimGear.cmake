@@ -36,7 +36,7 @@ macro(find_sg_library libName varName libs)
     FIND_LIBRARY(${libVarName}_DEBUG
       NAMES ${libName}${CMAKE_DEBUG_POSTFIX}
       HINTS $ENV{SIMGEAR_DIR}
-      PATH_SUFFIXES ${CMAKE_INSTALL_LIBDIR} libs64 libs libs/Win32 libs/Win64
+      PATH_SUFFIXES ${CMAKE_INSTALL_LIBDIR} libs64 libs lib libs/Win32 libs/Win64
       PATHS
       /usr/local
       /usr
@@ -45,7 +45,7 @@ macro(find_sg_library libName varName libs)
     FIND_LIBRARY(${libVarName}_RELEASE
       NAMES ${libName}${CMAKE_RELEASE_POSTFIX}
       HINTS $ENV{SIMGEAR_DIR}
-      PATH_SUFFIXES ${CMAKE_INSTALL_LIBDIR} libs64 libs libs/Win32 libs/Win64
+      PATH_SUFFIXES ${CMAKE_INSTALL_LIBDIR} libs64 libs lib libs/Win32 libs/Win64
       PATHS
       /usr/local
       /usr
